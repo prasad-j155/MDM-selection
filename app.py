@@ -93,7 +93,7 @@ if not st.session_state.sis_verified:
     - It should start with **312****  
     - **Do not include the letter 'S'** 
     """)
-    entered_sis_id = st.text_input("🔢 Enter Your SIS ID")
+    entered_sis_id = st.text_input("🔢 Enter Your ID")
     if st.button("Next"):
         if entered_sis_id:
             sis_id_str = entered_sis_id.strip().upper()
