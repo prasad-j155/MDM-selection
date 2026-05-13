@@ -42,15 +42,15 @@ def get_submitted_records():
 
 def branch_to_mdm(branch):
     if branch == 'CSE':
-        return 'CSE : Introduction to Data Analytics(IDA)'
+        return 'CSE'
     elif branch == 'MECH':
-        return 'MECH : Industrial Robotics & Automation(IRA)'
+        return 'MECH'
     elif branch == 'ELPO':
-        return 'ELPO : Energy Audit & Management (EAM)'
+        return 'ELPO'
     elif branch == 'EXTC':
-        return 'EXTC : Introduction to Wireless Communication'
+        return 'EXTC'
     elif branch == 'IT':
-        return 'IT : Fundamentals of Cyber Security'
+        return 'IT'
 
 def write_to_google_sheet(row_data):
     body = {"values": [row_data]}
@@ -87,8 +87,8 @@ if st.session_state.submitted:
 
 # ------------------ SIS ID Step ------------------ #
 if not st.session_state.sis_verified:
-    st.info("💡 **Important Instructions for Diploma Students:**")
-    st.markdown("""
+    #st.info("💡 **Important Instructions for Diploma Students:**")
+    st.info("""
     - Use your **ERP Login ID** for registration  
     - It should start with **312****  
     - **Do not include the letter 'S'** 
@@ -105,9 +105,9 @@ if not st.session_state.sis_verified:
                 st.session_state.sis_verified = True
                 st.rerun()
             else:
-                st.error("❌ SIS ID not found. Please check and try again.")
+                st.error("❌ ID not found. Please check and try again.")
         else:
-            st.warning("Please enter a valid numeric SIS ID.")
+            st.warning("Please enter a valid numeric fID.")
 
 # ------------------ MDM Selection Step ------------------ #
 if st.session_state.sis_verified:
@@ -119,7 +119,7 @@ if st.session_state.sis_verified:
 
     st.markdown("### 🧾 Student Details")
     st.write(f"**👤 Name:** {student_name}")
-    st.write(f"**🆔 SIS ID:** {sis_id_str}")
+    st.write(f"**🆔 ID:** {sis_id_str}")
     st.write(f"**🏷️ Branch:** {branch}")
 
     if sis_id_str in submitted_ids:
