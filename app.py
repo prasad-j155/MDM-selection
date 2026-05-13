@@ -1,0 +1,170 @@
+import streamlit as st
+import pandas as pd
+from datetime import datetime
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+
+# ------------------ CONFIG ------------------ #
+EXCEL_FILE = "list-all-students_first_year_MDM_selection-26-27_PJ-revised.xlsx"
+SPREADSHEET_ID = "1NJNuO1VtORzqxihiqTzAB5acVr2P1yr7GZkleFBZmyM"  # Replace with your Sheet ID
+SHEET_NAME = "mdm_data"  # Updated sheet name suggestion
+
+# ------------------ GOOGLE SHEETS SETUP ------------------ #
+SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
+creds = service_account.Credentials.from_service_account_info(
+    st.secrets["gcp_service_account"]
+)
+service = build("sheets", "v4", credentials=creds)
+
+def get_submitted_records():
+    try:
+        # Assuming the new sheet will have 6 columns (A to F)
+        result = service.spreadsheets().values().get(
+            spreadsheetId=SPREADSHEET_ID,
+            range=f"{SHEET_NAME}!A2:F",
+        ).execute()
+        values = result.get("values", [])
+
+        submitted_ids = set()
+        sis_id_to_data = {}
+
+        for row in values:
+            if len(row) >= 2:
+                sis_id = row[1].strip()
+                submitted_ids.add(sis_id)
+                sis_id_to_data[sis_id] = row
+
+        return submitted_ids, sis_id_to_data
+
+    except Exception as e:
+        st.error(f"❌ Error reading from Google Sheet: {e}")
+        return set(), {}
+
+def branch_to_mdm(branch):
+    if branch == 'CSE':
+        return 'CSE : Introduction to Data Analytics(IDA)'
+    elif branch == 'MECH':
+        return 'MECH : Industrial Robotics & Automation(IRA)'
+    elif branch == 'ELPO':
+        return 'ELPO : Energy Audit & Management (EAM)'
+    elif branch == 'EXTC':
+        return 'EXTC : Introduction to Wireless Communication'
+    elif branch == 'IT':
+        return 'IT : Fundamentals of Cyber Security'
+
+def write_to_google_sheet(row_data):
+    body = {"values": [row_data]}
+    service.spreadsheets().values().append(
+        spreadsheetId=SPREADSHEET_ID,
+        range=f"{SHEET_NAME}!A1",
+        valueInputOption="USER_ENTERED",
+        body=body
+    ).execute()
+
+# ------------------ STREAMLIT UI ------------------ #
+st.markdown("#### SHRI SANT GAJANAN MAHARAJ COLLEGE OF ENGINEERING, SHEGAON")
+st.title("🎓 MDM Selection Form")
+
+try:
+    df = pd.read_excel(EXCEL_FILE)
+except Exception as e:
+    st.error(f"❌ Error reading Excel file: {e}")
+    st.stop()
+
+submitted_ids, sis_id_to_data = get_submitted_records()
+
+# Session states
+if "sis_verified" not in st.session_state:
+    st.session_state.sis_verified = False
+
+if "submitted" not in st.session_state:
+    st.session_state.submitted = False
+
+# ------------------ FINAL THANK YOU ------------------ #
+if st.session_state.submitted:
+    st.success("🎉 Thank you! Your response has been recorded.")
+    st.stop()
+
+# ------------------ SIS ID Step ------------------ #
+if not st.session_state.sis_verified:
+    st.info("💡 **Important Instructions for Diploma Students:**")
+    st.markdown("""
+    - Use your **ERP Login ID** for registration  
+    - It should start with **312****  
+    - **Do not include the letter 'S'** 
+    """)
+    entered_sis_id = st.text_input("🔢 Enter Your SIS ID")
+    if st.button("Next"):
+        if entered_sis_id:
+            sis_id_str = entered_sis_id.strip().upper()
+            matching_row = df[df["sis ID"].astype(str).str.strip().str.upper() == sis_id_str]
+
+            if not matching_row.empty:
+                st.session_state.sis_id = sis_id_str
+                st.session_state.student_row = matching_row.iloc[0]
+                st.session_state.sis_verified = True
+                st.rerun()
+            else:
+                st.error("❌ SIS ID not found. Please check and try again.")
+        else:
+            st.warning("Please enter a valid numeric SIS ID.")
+
+# ------------------ MDM Selection Step ------------------ #
+if st.session_state.sis_verified:
+    student_row = st.session_state.student_row
+    sis_id_str = st.session_state.sis_id
+    student_name = student_row["STUDENT NAME"]
+    branch = str(student_row["Br."]).strip().upper()
+    br_coded = str(student_row["BR_coded"]).strip().upper()
+
+    st.markdown("### 🧾 Student Details")
+    st.write(f"**👤 Name:** {student_name}")
+    st.write(f"**🆔 SIS ID:** {sis_id_str}")
+    st.write(f"**🏷️ Branch:** {branch}")
+
+    if sis_id_str in submitted_ids:
+        prev_data = sis_id_to_data[sis_id_str]
+        # Assuming the selected MDM is now in the 6th column (index 5)
+        prev_mdm = prev_data[5] if len(prev_data) > 5 else "N/A"
+        
+        st.info(f"✅ You have already submitted your MDM choice: **{prev_mdm}**")
+        st.warning("You cannot submit again.")
+        st.stop()  
+    else:
+        all_mdm_options = ['EXTC', 'MECH', 'CSE', 'ELPO', 'IT']
+        
+        # Exclude their own branch
+        excluded = set([br_coded])
+
+        # Keep the CSE / IT mutual exclusion logic
+        if br_coded in ['CSE', 'IT']:
+            excluded.update(['CSE', 'IT'])
+
+        available_mdm = [e for e in all_mdm_options if e.upper() not in excluded]
+        options_display = [branch_to_mdm(i) for i in available_mdm]
+        options_display.insert(0, "select your MDM")
+
+        with st.form("mdm_form"):
+            selected_mdm = st.selectbox("🎯 Select Your MDM Programme", options_display)
+            
+            submit_final = st.form_submit_button("✅ Submit")
+
+            if submit_final:
+                if selected_mdm == "select your MDM":
+                    st.warning("⚠️ Please select an MDM before submitting.")
+                else:
+                    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    data_row = [
+                        timestamp,
+                        sis_id_str,
+                        student_name,
+                        br_coded,
+                        branch,
+                        selected_mdm  # Saving the selected MDM directly
+                    ]
+                    try:
+                        write_to_google_sheet(data_row)
+                        st.session_state.submitted = True
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"❌ Error writing to Google Sheet: {e}")
