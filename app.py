@@ -156,7 +156,7 @@ if st.session_state.sis_verified:
                     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     data_row = [
                         timestamp,
-                        sis_id_str,
+                        f"'{sis_id_str}",
                         student_name,
                         br_coded,
                         branch,
