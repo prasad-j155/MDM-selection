@@ -5,7 +5,7 @@ from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
 # ------------------ CONFIG ------------------ #
-EXCEL_FILE = "mdm.xlsx"
+EXCEL_FILE = "mdm2.xlsx"
 SPREADSHEET_ID = "1NJNuO1VtORzqxihiqTzAB5acVr2P1yr7GZkleFBZmyM"  # Replace with your Sheet ID
 SHEET_NAME = "mdm_data"  # Updated sheet name suggestion
 
